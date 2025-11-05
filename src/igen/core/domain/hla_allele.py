@@ -62,12 +62,20 @@ class HlaAlleleProtocol(Protocol):
         """Expose the canonical allele string as a property."""
         ...
 
-    def display(self) -> str:
-        """Return the allele string truncated to ``display_field_count`` fields."""
+    def display(self, force_truncate: bool = False) -> str:
+        """Return the allele string truncated to ``display_field_count`` fields.
+
+        When ``force_truncate`` is ``True`` the return value is always truncated,
+        even if the original specificity already ends with a lettered suffix.
+        """
         ...
 
-    def display_specificity(self) -> str:
-        """Return the truncated specificity with any locus-specific adjustments applied."""
+    def display_specificity(self, force_truncate: bool = False) -> str:
+        """Return the truncated specificity with locus-specific adjustments.
+
+        When ``force_truncate`` is ``True`` the specificity is always truncated,
+        even if the original string would normally be left intact.
+        """
         ...
 
     def contains(self, other: "HlaAlleleProtocol | str") -> bool:
@@ -106,6 +114,11 @@ class HlaAlleleProtocol(Protocol):
     @property
     def is_class_ii(self) -> bool:
         """Whether the allele belongs to an HLA Class II locus."""
+        ...
+
+    @property
+    def allelic_group(self) -> str:
+        """Return the allele string truncated to its first (allelic group) field."""
         ...
 
 
@@ -203,13 +216,21 @@ class HlaAllele(HlaAlleleProtocol):
         """Expose the canonical allele string as a property."""
         return str(self)
 
-    def display(self) -> str:
-        """Return the allele string truncated to ``display_field_count`` fields."""
-        return self._reduce_specificity(str(self))
+    def display(self, force_truncate: bool = False) -> str:
+        """Return the allele string truncated to ``display_field_count`` fields.
 
-    def display_specificity(self) -> str:
-        """Return the truncated specificity, applying DRB345 aliases when needed."""
-        reduced = self._reduce_specificity(self.specificity)
+        Setting ``force_truncate`` forces truncation even when the specificity ends
+        with a trailing letter that we would normally preserve.
+        """
+        return self._reduce_specificity(str(self), force_truncate)
+
+    def display_specificity(self, force_truncate: bool = False) -> str:
+        """Return the truncated specificity, applying DRB345 aliases when needed.
+
+        Setting ``force_truncate`` forces truncation even when the specificity ends
+        with a trailing letter that would normally keep the string intact.
+        """
+        reduced = self._reduce_specificity(self.specificity, force_truncate)
 
         if not self.is_drb345:
             return reduced
@@ -220,8 +241,8 @@ class HlaAllele(HlaAlleleProtocol):
 
         return f"{alias}*{reduced}"
 
-    def _reduce_specificity(self, specificity: str) -> str:
-        if re.search(r"\d[A-Z]$", specificity):
+    def _reduce_specificity(self, specificity: str, force_truncate: bool = False) -> str:
+        if not force_truncate and re.search(r"\d[A-Z]$", specificity):
             return specificity
 
         parts = specificity.split(":")
@@ -269,3 +290,8 @@ class HlaAllele(HlaAlleleProtocol):
     def is_class_ii(self) -> bool:
         """Whether the allele belongs to an HLA Class II locus."""
         return self.locus.is_class_ii
+
+    @property
+    def allelic_group(self) -> str:
+        """Return the allele string truncated to its first (allelic group) field."""
+        return self.with_display_field_count(1).display(force_truncate=True)
