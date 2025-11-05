@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, Iterator, Optional, Sequence, Tuple, Union
 
-from igen.core.enum.hla_locus import HlaLocus, HlaLocusEnum
+from igen.core.enum import HlaLocus, HlaLocusEnum
 
 from .hla_allele import HlaAllele, HlaAlleleProtocol
 

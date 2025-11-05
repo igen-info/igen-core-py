@@ -8,7 +8,7 @@ from typing import Optional, Protocol, runtime_checkable
 
 from igen.shared.string_utils import is_blank
 
-from igen.core.enum.hla_locus import HlaLocus
+from igen.core.enum import HlaLocus
 
 _LOCUS_DISPLAY_MAP: dict[HlaLocus, str] = {
     HlaLocus.DRB3: "B3",
