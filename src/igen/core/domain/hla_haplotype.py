@@ -2,14 +2,64 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Iterator, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterable, Iterator, Optional, Protocol, Sequence, Tuple, Union, runtime_checkable
 
 from igen.core.enum import HlaLocus, HlaLocusEnum
 
 from .hla_allele import HlaAllele, HlaAlleleProtocol
 
-AlleleInput = Union[Iterable[HlaAlleleProtocol], "HlaHaplotype", str]
+AlleleInput = Union[Iterable[HlaAlleleProtocol], "HlaHaplotypeProtocol", str]
 LocusInput = Union[HlaLocus, HlaLocusEnum, str]
+
+
+@runtime_checkable
+class HlaHaplotypeProtocol(Protocol):
+    """Structural typing contract for HLA haplotype models."""
+
+    @classmethod
+    def create(cls, alleles: AlleleInput) -> "HlaHaplotypeProtocol":
+        """Construct a haplotype from iterables, strings, or another haplotype."""
+        ...
+
+    def get(self, locus: LocusInput, exact: bool = False) -> Optional[HlaAlleleProtocol]:
+        """Retrieve the allele registered for the provided locus."""
+        ...
+
+    def set(self, locus: LocusInput, allele: HlaAlleleProtocol) -> "HlaHaplotypeProtocol":
+        """Return a new haplotype with the allele stored for ``locus``."""
+        ...
+
+    def has(self, locus: LocusInput) -> bool:
+        """Whether an allele is registered for the provided locus."""
+        ...
+
+    def swap(self, haplotype: "HlaHaplotypeProtocol", locus: LocusInput) -> Tuple["HlaHaplotypeProtocol", "HlaHaplotypeProtocol"]:
+        """Swap the allele at ``locus`` between two haplotypes."""
+        ...
+
+    def swap_all(self, haplotype: "HlaHaplotypeProtocol", loci: Sequence[LocusInput]) -> Tuple["HlaHaplotypeProtocol", "HlaHaplotypeProtocol"]:
+        """Swap all specified loci between this haplotype and another."""
+        ...
+
+    def clone(self) -> "HlaHaplotypeProtocol":
+        """Return a shallow copy of the haplotype."""
+        ...
+
+    def concat(self, haplotype: "HlaHaplotypeProtocol") -> "HlaHaplotypeProtocol":
+        """Return a new haplotype combining alleles from both inputs."""
+        ...
+
+    def __str__(self) -> str:
+        """Render the haplotype as a '+'-joined list of allele strings."""
+        ...
+
+    def __iter__(self) -> Iterator[HlaAlleleProtocol]:
+        ...
+
+    @property
+    def alleles(self) -> list[HlaAlleleProtocol]:
+        """Return the collection of alleles in insertion order."""
+        ...
 
 
 def _coerce_locus(locus: LocusInput) -> HlaLocus:
@@ -27,7 +77,7 @@ def _normalize_locus(locus: HlaLocus) -> HlaLocus:
     return HlaLocus.DRB345 if locus.is_drb345 else locus
 
 
-class HlaHaplotype:
+class HlaHaplotype(HlaHaplotypeProtocol):
     """Immutable mapping of HLA loci to their corresponding alleles."""
 
     __slots__ = ("_allele_map",)
@@ -77,7 +127,7 @@ class HlaHaplotype:
         """Whether an allele is registered for the provided locus."""
         return self.get(locus) is not None
 
-    def swap(self, haplotype: "HlaHaplotype", locus: LocusInput) -> Tuple["HlaHaplotype", "HlaHaplotype"]:
+    def swap(self, haplotype: "HlaHaplotypeProtocol", locus: LocusInput) -> Tuple["HlaHaplotype", "HlaHaplotype"]:
         """Swap the allele at ``locus`` between two haplotypes, returning clones."""
         first, second = self.clone(), haplotype.clone()
 
@@ -92,7 +142,7 @@ class HlaHaplotype:
 
         return first, second
 
-    def swap_all(self, haplotype: "HlaHaplotype", loci: Sequence[LocusInput]) -> Tuple["HlaHaplotype", "HlaHaplotype"]:
+    def swap_all(self, haplotype: "HlaHaplotypeProtocol", loci: Sequence[LocusInput]) -> Tuple["HlaHaplotype", "HlaHaplotype"]:
         """Swap all loci listed in ``loci`` between this haplotype and another."""
         pair: Tuple[HlaHaplotype, HlaHaplotype] = (self, haplotype)
 
@@ -105,7 +155,7 @@ class HlaHaplotype:
         """Return a shallow copy of the haplotype."""
         return HlaHaplotype(self.alleles)
 
-    def concat(self, haplotype: "HlaHaplotype") -> HlaHaplotype:
+    def concat(self, haplotype: "HlaHaplotypeProtocol") -> HlaHaplotype:
         """Return a new haplotype combining all alleles from both inputs."""
         return HlaHaplotype([*self.alleles, *haplotype.alleles])
 
